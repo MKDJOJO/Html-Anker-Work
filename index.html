@@ -1,0 +1,313 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字幕转换工具 - Excel与SRT互转</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#6366F1',
+                        neutral: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-custom {
+                transition: all 0.3s ease;
+            }
+            .shadow-custom {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md fixed w-full z-10 top-0">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-file-text-o text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-neutral">字幕转换工具</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#" class="text-gray-600 hover:text-primary transition-custom">首页</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition-custom">使用指南</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition-custom">关于</a>
+            </div>
+            <button class="md:hidden text-gray-600">
+                <i class="fa fa-bars text-xl"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 页面标题 -->
+        <div class="text-center mb-12">
+            <h2 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-neutral mb-4">小李的Excel与Srt互转魔术器</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto">使用须知：1.使用Srt转Excel文件；2.打开Excel文件将需要替换的字幕在对应区域替换然后保存；3.使用Excel转Srt。4.若你需要单独使用Excel转Srt请遵循"Srt转Excel所产生的Excel的文件格式"</p>
+        </div>
+        
+        <!-- 转换选项卡 - 已互换位置 -->
+        <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-custom overflow-hidden mb-10">
+            <div class="flex border-b">
+                <button id="srtToExcelTab" class="flex-1 py-4 px-6 text-center font-medium text-primary border-b-2 border-primary">
+                    <i class="fa fa-file-text-o mr-2"></i>SRT 转 Excel
+                </button>
+                <button id="excelToSrtTab" class="flex-1 py-4 px-6 text-center font-medium text-gray-500 hover:text-gray-700 transition-custom">
+                    <i class="fa fa-file-excel-o mr-2"></i>Excel 转 SRT
+                </button>
+            </div>
+            
+            <!-- 转换表单 -->
+            <div class="p-6">
+                <form id="conversionForm" enctype="multipart/form-data" class="space-y-6">
+                    <input type="hidden" id="conversionType" name="conversionType" value="srtToExcel">
+                    
+                    <div class="space-y-2">
+                        <label for="fileUpload" class="block text-gray-700 font-medium">选择文件</label>
+                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:bg-gray-50 transition-custom">
+                            <div class="space-y-1 text-center">
+                                <i class="fa fa-cloud-upload text-gray-400 text-3xl mb-2"></i>
+                                <div class="flex text-sm text-gray-600">
+                                    <label for="fileUpload" class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80">
+                                        <span>上传文件</span>
+                                        <input id="fileUpload" name="file" type="file" class="sr-only" accept=".srt,.xlsx">
+                                    </label>
+                                    <p class="pl-1">或拖放文件到此处</p>
+                                </div>
+                                <p id="fileTypeInfo" class="text-xs text-gray-500">支持 .srt 格式文件</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-custom">
+                            <i class="fa fa-exchange mr-2"></i>开始转换
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 状态和结果区域 -->
+        <div id="statusArea" class="max-w-3xl mx-auto hidden">
+            <div id="loadingStatus" class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded relative mb-6 hidden">
+                <i class="fa fa-spinner fa-spin mr-2"></i>
+                <span>正在处理，请稍候...</span>
+            </div>
+            
+            <div id="successStatus" class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-6 hidden">
+                <i class="fa fa-check-circle mr-2"></i>
+                <span>转换成功！</span>
+                <div class="mt-3">
+                    <a id="downloadLink" href="#" class="inline-flex items-center text-green-600 hover:text-green-800 font-medium">
+                        <i class="fa fa-download mr-1"></i> 下载转换后的文件
+                    </a>
+                </div>
+            </div>
+            
+            <div id="errorStatus" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-6 hidden">
+                <i class="fa fa-exclamation-circle mr-2"></i>
+                <span id="errorMessage">转换失败，请重试</span>
+            </div>
+        </div>
+        
+        <!-- 功能说明 - 已互换位置 -->
+        <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 mt-16">
+            <div class="bg-white p-6 rounded-xl shadow-custom">
+                <div class="text-accent text-3xl mb-4">
+                    <i class="fa fa-file-text-o"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-3 text-neutral">SRT 转 Excel</h3>
+                <p class="text-gray-600">将SRT字幕文件解析为Excel表格，便于进行批量编辑和管理，保留序号、时间码和字幕内容等信息。</p>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-custom">
+                <div class="text-primary text-3xl mb-4">
+                    <i class="fa fa-file-excel-o"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-3 text-neutral">Excel 转 SRT</h3>
+                <p class="text-gray-600">将包含字幕信息的Excel表格转换为标准SRT字幕文件，支持批量转换，保留所有时间码和字幕内容。</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-neutral text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa fa-file-text-o text-primary text-xl"></i>
+                        <span class="font-bold">字幕转换工具</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">简单高效的字幕格式转换解决方案</p>
+                </div>
+                
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-white transition-custom">
+                        <i class="fa fa-question-circle"></i> 帮助
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-custom">
+                        <i class="fa fa-envelope"></i> 联系我们
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-custom">
+                        <i class="fa fa-info-circle"></i> 关于
+                    </a>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-6 pt-6 text-center text-gray-400 text-sm">© 2025 字幕转换工具 - 保留所有权利</div>
+        </div>
+    </footer>
+
+    <script>
+        // 选项卡切换逻辑 - 已更新为互换后的逻辑
+        const excelToSrtTab = document.getElementById('excelToSrtTab');
+        const srtToExcelTab = document.getElementById('srtToExcelTab');
+        const conversionType = document.getElementById('conversionType');
+        const fileUpload = document.getElementById('fileUpload');
+        const fileTypeInfo = document.getElementById('fileTypeInfo');
+        
+        // SRT转Excel选项卡逻辑（现在是默认选中项）
+        srtToExcelTab.addEventListener('click', () => {
+            conversionType.value = 'srtToExcel';
+            fileUpload.accept = '.srt';
+            fileTypeInfo.textContent = '支持 .srt 格式文件';
+            
+            // 更新选项卡样式
+            srtToExcelTab.classList.add('text-primary', 'border-primary');
+            srtToExcelTab.classList.remove('text-gray-500');
+            excelToSrtTab.classList.remove('text-primary', 'border-primary');
+            excelToSrtTab.classList.add('text-gray-500');
+        });
+        
+        // Excel转SRT选项卡逻辑
+        excelToSrtTab.addEventListener('click', () => {
+            conversionType.value = 'excelToSrt';
+            fileUpload.accept = '.xlsx';
+            fileTypeInfo.textContent = '支持 .xlsx 格式文件';
+            
+            // 更新选项卡样式
+            excelToSrtTab.classList.add('text-primary', 'border-primary');
+            excelToSrtTab.classList.remove('text-gray-500');
+            srtToExcelTab.classList.remove('text-primary', 'border-primary');
+            srtToExcelTab.classList.add('text-gray-500');
+        });
+        
+        // 文件拖放功能
+        const dropArea = document.querySelector('.border-dashed');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('bg-blue-50', 'border-primary');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('bg-blue-50', 'border-primary');
+        }
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length) {
+                fileUpload.files = files;
+            }
+        }
+        
+        // 表单提交处理
+        const conversionForm = document.getElementById('conversionForm');
+        const statusArea = document.getElementById('statusArea');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const successStatus = document.getElementById('successStatus');
+        const errorStatus = document.getElementById('errorStatus');
+        const errorMessage = document.getElementById('errorMessage');
+        const downloadLink = document.getElementById('downloadLink');
+        
+        conversionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 验证是否选择了文件
+            if (!fileUpload.files.length) {
+                alert('请选择要转换的文件');
+                return;
+            }
+            
+            // 显示状态区域和加载状态
+            statusArea.classList.remove('hidden');
+            loadingStatus.classList.remove('hidden');
+            successStatus.classList.add('hidden');
+            errorStatus.classList.add('hidden');
+            
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('file', fileUpload.files[0]);
+            formData.append('conversionType', conversionType.value);
+            
+            try {
+                // 发送文件到后端处理
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('转换失败: ' + response.statusText);
+                }
+                
+                // 获取转换后的文件信息
+                const result = await response.json();
+                
+                // 显示成功状态和下载链接
+                loadingStatus.classList.add('hidden');
+                successStatus.classList.remove('hidden');
+                downloadLink.href = result.downloadUrl;
+                
+            } catch (error) {
+                // 显示错误信息
+                loadingStatus.classList.add('hidden');
+                errorStatus.classList.remove('hidden');
+                errorMessage.textContent = error.message;
+            }
+        });
+    </script>
+
+
+</body></html>
